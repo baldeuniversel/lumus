@@ -1,0 +1,147 @@
+#!/usr/bin/bash
+
+# preinst script for lumus
+
+set -o pipefail
+
+
+#####
+# Action allowing to properly use the program after deployment 
+#####
+
+
+
+### Check to see who executes the `am-okay` program, then get the personnel directory
+#   of this user, then ... -> start tag[k0]
+
+flagBehalfSudo=""
+getPersonalUserDir="$HOME"
+getTheRealUser="$USER"
+getTheGroupNameUser=""
+
+if [[ -n "$SUDO_USER" ]]
+then
+    #
+    flagBehalfSudo="$SUDO_USER"
+    getTheRealUser="$SUDO_USER"
+    getTheGroupNameUser=` id -gn $getTheRealUser `
+
+    # Get the personnel directory of the user
+    getPersonalUserDir=` getent passwd "$flagBehalfSudo" | cut -d ":" -f6 `
+fi
+
+### Check to see who executes the `am-okay` program, then get the personnel directory
+#   of this user, then ... -> end tag[k0]
+
+
+
+# Check if bash is installed
+get_request=` whereis bash `
+
+if [[ ! ` echo "$get_request" | grep -i "bash" ` ]]
+then
+    #
+    echo "You have to install bash !"
+    exit 1
+#
+elif [[ ! -e "/tmp" ]]
+then
+
+    echo "You have to have the directory /tmp"
+
+    exit 1
+
+fi
+
+# variables
+total_brightness=""
+get_actual_brightness=""
+
+
+
+#
+if [[ ` cat /sys/class/backlight/*/max_brightness 2> /dev/null ` ]] \
+    && [[ ` cat /sys/class/backlight/*/brightness 2> /dev/null `  ]]
+then
+    #
+    total_brightness=` cat /sys/class/backlight/*/max_brightness 2> /dev/null`
+    get_actual_brightness=` cat /sys/class/backlight/*/brightness 2> /dev/null`
+else
+    echo "~"
+    echo -e "The \e[32;1mlumus\e[0m program is not compatible with your system ⚠️  "
+    echo ""
+    exit 1
+fi
+
+
+
+# Check if the variables above contain something, and do ...
+if [[ -n "$get_actual_brightness" ]] && [[ -n "$total_brightness" ]]
+then
+
+    #
+    getGroupBrightnessFile=` stat --format=%G /sys/class/backlight/*/brightness `
+    getPermBrightnessFile=` stat --format=%a /sys/class/backlight/*/brightness `
+
+
+
+    #
+    if [[ $getPermBrightnessFile -ne 664 ]]
+    then
+        #
+        chmod 664 /sys/class/backlight/*/brightness 2> /dev/null
+
+        #
+        if [[ $? -ne 0 ]]
+        then
+            echo "~"
+            echo -e "The \e[32;1mlumus\e[0m program is not compatible with your system ⚠️  "
+            echo ""
+            exit 1
+        fi
+    fi
+
+    # Add the real user to the `brightness` file group
+    if [[ ! ` getent group $getGroupBrightnessFile 2> /dev/null | grep -E -- "$getTheRealUser" ` ]]
+    then
+        #
+        usermod --append $getTheRealUser --groups $getGroupBrightnessFile 2> /dev/null
+
+        #
+        if [[ $? -ne 0 ]]
+        then
+            echo "~"
+            echo -e "The \e[32;1mlumus\e[0m program is not compatible with your system ⚠️  "
+            echo ""
+            exit 1
+        fi
+    fi
+
+	    
+
+    #
+    if [[ ! -e "/usr/bin" ]]
+    then
+        mkdir -p /usr/bin 2> /dev/null
+    fi
+
+    #
+    if [[ ! -e "/usr/share/lumus/doc/info" ]]
+    then
+        mkdir -p /usr/share/lumus/doc/info 2> /dev/null
+	        
+        #
+	    chmod -R 755 /usr/share/lumus/doc/info 2> /dev/null
+    fi
+
+    #
+    if [[ $? -eq 0 ]]
+    then
+        echo "YES" >  /usr/share/lumus/doc/info/lumus_status 2> /dev/null
+    fi
+else
+    echo ""
+    echo "This program seems to be not compatible with your system ⚠️  "
+
+    exit 1
+fi

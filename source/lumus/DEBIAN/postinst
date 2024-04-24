@@ -1,0 +1,21 @@
+#!/usr/bin/bash
+
+# postinst script for lumus
+#
+
+set -o pipefail
+
+# For setting the service linked to the script that gives the proper permissions to the user(admin) at each boot
+systemctl enable at-boot-lumus.service  &> /dev/null
+systemctl daemon-reload 2> /dev/null
+systemctl start at-boot-lumus.service 2> /dev/null
+
+
+
+#
+#
+echo "~"
+echo ""
+tput setaf 2; tput bold;echo "By Baldé ~" `tput sgr0` 2> /dev/null
+
+exit 0
